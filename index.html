@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
 <title>タスク管理</title>
 
 <!-- iOS ホーム画面追加対応 -->
@@ -47,7 +47,6 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
-    height: 100%;
     margin: 0;
     overscroll-behavior-y: none;
   }
@@ -59,6 +58,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   header {
@@ -225,7 +225,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--kb-offset, 0px);
     padding: 12px 16px calc(14px + var(--safe-bottom));
     background: linear-gradient(to top, var(--bg) 60%, transparent);
   }
@@ -264,16 +264,50 @@
     color: var(--text-muted);
   }
 
-  #due-input {
+  .due-picker {
+    position: relative;
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     border: 1px solid var(--border);
     background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
     border-radius: 10px;
     padding: 8px 10px;
-    outline: none;
+  }
+
+  .due-picker .due-icon {
+    flex: none;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .due-picker .due-label {
+    flex: 1;
     min-width: 0;
+    font-size: 14px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .due-picker .due-label.has-value {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .due-native-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    cursor: pointer;
   }
 
   #add-btn {
@@ -323,7 +357,11 @@
       <input id="task-input" type="text" placeholder="新しいタスクを入力" autocomplete="off" maxlength="200">
     </div>
     <div class="input-bar-row">
-      <input id="due-input" type="date">
+      <div class="due-picker" id="due-picker">
+        <span class="due-icon" aria-hidden="true">📅</span>
+        <span class="due-label" id="due-label">期限を設定</span>
+        <input id="due-input" class="due-native-input" type="date" aria-label="期限を設定">
+      </div>
       <button id="add-btn" type="submit" aria-label="追加">＋</button>
     </div>
   </div>
@@ -337,7 +375,9 @@
   const formEl = document.getElementById("add-form");
   const inputEl = document.getElementById("task-input");
   const dueInputEl = document.getElementById("due-input");
+  const dueLabelEl = document.getElementById("due-label");
   const sortSelectEl = document.getElementById("sort-select");
+  const DUE_PLACEHOLDER = "期限を設定";
   const countLabel = document.getElementById("count-label");
   const emptyState = document.getElementById("empty-state");
 
@@ -353,6 +393,21 @@
   const formatDue = (dueDate) => {
     const [y, m, d] = dueDate.split("-");
     return `期限: ${y}/${Number(m)}/${Number(d)}`;
+  };
+
+  const shortDate = (dueDate) => {
+    const [, m, d] = dueDate.split("-");
+    return `${Number(m)}/${Number(d)}`;
+  };
+
+  const updateDueLabel = () => {
+    if (dueInputEl.value) {
+      dueLabelEl.textContent = shortDate(dueInputEl.value);
+      dueLabelEl.classList.add("has-value");
+    } else {
+      dueLabelEl.textContent = DUE_PLACEHOLDER;
+      dueLabelEl.classList.remove("has-value");
+    }
   };
 
   const loadTasks = () => {
@@ -489,8 +544,11 @@
     addTask(inputEl.value, dueInputEl.value);
     inputEl.value = "";
     dueInputEl.value = "";
+    updateDueLabel();
     inputEl.focus();
   });
+
+  dueInputEl.addEventListener("change", updateDueLabel);
 
   sortSelectEl.addEventListener("change", () => {
     sortMode = sortSelectEl.value;
@@ -498,6 +556,20 @@
   });
 
   render();
+
+  // iOS Safari はキーボード表示時にレイアウトビューポートを縮めず、
+  // 見た目のビューポート（visualViewport）だけを縮める。
+  // position: fixed の要素をキーボードの直上に追従させ、画面全体が跳ねるのを防ぐ。
+  if (window.visualViewport) {
+    const vv = window.visualViewport;
+    const syncKeyboardOffset = () => {
+      const offset = Math.max(window.innerHeight - vv.height - vv.offsetTop, 0);
+      document.documentElement.style.setProperty("--kb-offset", `${offset}px`);
+    };
+    vv.addEventListener("resize", syncKeyboardOffset);
+    vv.addEventListener("scroll", syncKeyboardOffset);
+    syncKeyboardOffset();
+  }
 
   // Service Worker はサーバー経由（http/https）で開いた場合のみ登録する
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
