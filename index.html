@@ -397,9 +397,26 @@
     return `${d.getFullYear()}-${m}-${day}`;
   };
 
-  const formatDue = (dueDate) => {
+  const daysUntil = (dueDate, today) => {
+    const [dy, dm, dd] = dueDate.split("-").map(Number);
+    const [ty, tm, td] = today.split("-").map(Number);
+    const dueUTC = Date.UTC(dy, dm - 1, dd);
+    const todayUTC = Date.UTC(ty, tm - 1, td);
+    return Math.round((dueUTC - todayUTC) / 86400000);
+  };
+
+  const dueRemainingLabel = (dueDate, today) => {
+    const diff = daysUntil(dueDate, today);
+    if (diff === 0) return "今日まで";
+    if (diff === 1) return "明日まで";
+    if (diff === 2) return "明後日まで";
+    if (diff > 2) return `残り${diff}日`;
+    return `${-diff}日超過`;
+  };
+
+  const formatDue = (dueDate, today) => {
     const [y, m, d] = dueDate.split("-");
-    return `期限: ${y}/${Number(m)}/${Number(d)}`;
+    return `期限: ${y}/${Number(m)}/${Number(d)}・${dueRemainingLabel(dueDate, today)}`;
   };
 
   const shortDate = (dueDate) => {
@@ -497,7 +514,7 @@
         }
         const due = document.createElement("div");
         due.className = "due-date" + statusClass;
-        due.textContent = formatDue(task.dueDate);
+        due.textContent = formatDue(task.dueDate, today);
         body.appendChild(due);
       }
 
