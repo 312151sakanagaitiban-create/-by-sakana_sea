@@ -26,6 +26,7 @@
     --accent: #4f46e5;
     --accent-soft: #eceafd;
     --danger: #e5484d;
+    --warning: #b45309;
     --border: #e6e7eb;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -40,6 +41,7 @@
       --accent: #818cf8;
       --accent-soft: #262a3a;
       --danger: #f87171;
+      --warning: #fbbf24;
       --border: #2a2d35;
     }
   }
@@ -188,6 +190,11 @@
     margin-top: 3px;
     font-size: 12px;
     color: var(--text-muted);
+  }
+
+  .due-date.today {
+    color: var(--warning);
+    font-weight: 600;
   }
 
   .due-date.overdue {
@@ -339,8 +346,8 @@
     <label for="sort-select">
       並び替え
       <select id="sort-select">
+        <option value="due" selected>期限が近い順</option>
         <option value="created">追加順</option>
-        <option value="due">期限が近い順</option>
       </select>
     </label>
   </div>
@@ -358,7 +365,7 @@
     </div>
     <div class="input-bar-row">
       <div class="due-picker" id="due-picker">
-        <span class="due-icon" aria-hidden="true">⏰</span>
+        <span class="due-icon" aria-hidden="true">📅</span>
         <span class="due-label" id="due-label">期限を設定</span>
         <input id="due-input" class="due-native-input" type="date" aria-label="期限を設定">
       </div>
@@ -381,7 +388,7 @@
   const countLabel = document.getElementById("count-label");
   const emptyState = document.getElementById("empty-state");
 
-  let sortMode = "created";
+  let sortMode = "due";
 
   const todayStr = () => {
     const d = new Date();
@@ -483,9 +490,13 @@
       body.appendChild(text);
 
       if (task.dueDate) {
-        const isOverdue = !task.done && task.dueDate <= today;
+        let statusClass = "";
+        if (!task.done) {
+          if (task.dueDate < today) statusClass = " overdue";
+          else if (task.dueDate === today) statusClass = " today";
+        }
         const due = document.createElement("div");
-        due.className = "due-date" + (isOverdue ? " overdue" : "");
+        due.className = "due-date" + statusClass;
         due.textContent = formatDue(task.dueDate);
         body.appendChild(due);
       }
