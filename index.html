@@ -592,15 +592,28 @@
 
   // iOS Safari はキーボード表示時にレイアウトビューポートを縮めず、
   // 見た目のビューポート（visualViewport）だけを縮める。
-  // ブラウザ側の自動リサイズ（interactive-widget）には頼らず、
-  // visualViewport の値だけを唯一の基準にして高さとオフセットを計算する。
+  // 日本語入力時の予測変換バーもキーボードの一部として visualViewport.height に
+  // 反映されるため、「画面の高さ - visualViewport.height」だけで
+  // 隠れている領域（キーボード＋変換バー）の高さを正確に取得できる。
+  // レイアウトビューポートの高さはキーボードの有無で変化しないはずの値なので、
+  // 起動時に一度だけ基準値として保持し、以降はそこからの差分だけを見る。
   if (window.visualViewport) {
     const vv = window.visualViewport;
+    let layoutHeight = window.innerHeight;
+
     const syncViewport = () => {
-      const offset = Math.max(window.innerHeight - vv.height - vv.offsetTop, 0);
-      document.documentElement.style.setProperty("--kb-offset", `${offset}px`);
+      const hiddenHeight = Math.max(layoutHeight - vv.height, 0);
+      document.documentElement.style.setProperty("--kb-offset", `${hiddenHeight}px`);
       document.documentElement.style.setProperty("--app-height", `${vv.height}px`);
     };
+
+    window.addEventListener("orientationchange", () => {
+      setTimeout(() => {
+        layoutHeight = window.innerHeight;
+        syncViewport();
+      }, 300);
+    });
+
     vv.addEventListener("resize", syncViewport);
     vv.addEventListener("scroll", syncViewport);
     syncViewport();
