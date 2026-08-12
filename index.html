@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
 <title>タスク管理</title>
 
 <!-- iOS ホーム画面追加対応 -->
@@ -62,7 +62,6 @@
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
-    height: var(--app-height, 100dvh);
   }
 
   header {
@@ -238,7 +237,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    transform: translateY(calc(-1 * var(--kb-offset, 0px)));
     padding: 12px 16px calc(14px + var(--safe-bottom));
     background: linear-gradient(to top, var(--bg) 60%, transparent);
   }
@@ -590,34 +588,6 @@
   });
 
   render();
-
-  // iOS Safari はキーボード表示時にレイアウトビューポートを縮めず、
-  // 見た目のビューポート（visualViewport）だけを縮める。
-  // window.innerHeight（レイアウトビューポート）は URL バー等の
-  // 表示・非表示でも変化するため、毎回そのタイミングの最新値を読み直す。
-  // 一度だけ取得してキャッシュすると、ツールバーの開閉後に基準がずれて
-  // 入力バーが飛んだり隠れたりする不具合になるため、キャッシュはしない。
-  // rAF で1フレーム遅らせて読むことで、リサイズ直後の不安定な値を避ける。
-  if (window.visualViewport) {
-    const vv = window.visualViewport;
-    let rafId = null;
-
-    const applyOffset = () => {
-      rafId = null;
-      const hiddenHeight = Math.max(window.innerHeight - vv.height - vv.offsetTop, 0);
-      document.documentElement.style.setProperty("--kb-offset", `${hiddenHeight}px`);
-      document.documentElement.style.setProperty("--app-height", `${vv.height}px`);
-    };
-
-    const scheduleSync = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(applyOffset);
-    };
-
-    vv.addEventListener("resize", scheduleSync);
-    vv.addEventListener("scroll", scheduleSync);
-    applyOffset();
-  }
 
   // Service Worker はサーバー経由（http/https）で開いた場合のみ登録する
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
