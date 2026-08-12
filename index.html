@@ -571,6 +571,12 @@
     render();
   }
 
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+    }
+  });
+
   formEl.addEventListener("submit", (e) => {
     e.preventDefault();
     addTask(inputEl.value, dueInputEl.value);
