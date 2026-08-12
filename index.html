@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>タスク管理</title>
 
 <!-- iOS ホーム画面追加対応 -->
@@ -62,6 +62,7 @@
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
+    height: var(--app-height, 100dvh);
   }
 
   header {
@@ -591,16 +592,18 @@
 
   // iOS Safari はキーボード表示時にレイアウトビューポートを縮めず、
   // 見た目のビューポート（visualViewport）だけを縮める。
-  // position: fixed の要素をキーボードの直上に追従させ、画面全体が跳ねるのを防ぐ。
+  // ブラウザ側の自動リサイズ（interactive-widget）には頼らず、
+  // visualViewport の値だけを唯一の基準にして高さとオフセットを計算する。
   if (window.visualViewport) {
     const vv = window.visualViewport;
-    const syncKeyboardOffset = () => {
+    const syncViewport = () => {
       const offset = Math.max(window.innerHeight - vv.height - vv.offsetTop, 0);
       document.documentElement.style.setProperty("--kb-offset", `${offset}px`);
+      document.documentElement.style.setProperty("--app-height", `${vv.height}px`);
     };
-    vv.addEventListener("resize", syncKeyboardOffset);
-    vv.addEventListener("scroll", syncKeyboardOffset);
-    syncKeyboardOffset();
+    vv.addEventListener("resize", syncViewport);
+    vv.addEventListener("scroll", syncViewport);
+    syncViewport();
   }
 
   // Service Worker はサーバー経由（http/https）で開いた場合のみ登録する
