@@ -237,7 +237,8 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--kb-offset, 0px);
+    bottom: 0;
+    transform: translateY(calc(-1 * var(--kb-offset, 0px)));
     padding: 12px 16px calc(14px + var(--safe-bottom));
     background: linear-gradient(to top, var(--bg) 60%, transparent);
   }
@@ -592,31 +593,30 @@
 
   // iOS Safari はキーボード表示時にレイアウトビューポートを縮めず、
   // 見た目のビューポート（visualViewport）だけを縮める。
-  // 日本語入力時の予測変換バーもキーボードの一部として visualViewport.height に
-  // 反映されるため、「画面の高さ - visualViewport.height」だけで
-  // 隠れている領域（キーボード＋変換バー）の高さを正確に取得できる。
-  // レイアウトビューポートの高さはキーボードの有無で変化しないはずの値なので、
-  // 起動時に一度だけ基準値として保持し、以降はそこからの差分だけを見る。
+  // window.innerHeight（レイアウトビューポート）は URL バー等の
+  // 表示・非表示でも変化するため、毎回そのタイミングの最新値を読み直す。
+  // 一度だけ取得してキャッシュすると、ツールバーの開閉後に基準がずれて
+  // 入力バーが飛んだり隠れたりする不具合になるため、キャッシュはしない。
+  // rAF で1フレーム遅らせて読むことで、リサイズ直後の不安定な値を避ける。
   if (window.visualViewport) {
     const vv = window.visualViewport;
-    let layoutHeight = window.innerHeight;
+    let rafId = null;
 
-    const syncViewport = () => {
-      const hiddenHeight = Math.max(layoutHeight - vv.height, 0);
+    const applyOffset = () => {
+      rafId = null;
+      const hiddenHeight = Math.max(window.innerHeight - vv.height - vv.offsetTop, 0);
       document.documentElement.style.setProperty("--kb-offset", `${hiddenHeight}px`);
       document.documentElement.style.setProperty("--app-height", `${vv.height}px`);
     };
 
-    window.addEventListener("orientationchange", () => {
-      setTimeout(() => {
-        layoutHeight = window.innerHeight;
-        syncViewport();
-      }, 300);
-    });
+    const scheduleSync = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(applyOffset);
+    };
 
-    vv.addEventListener("resize", syncViewport);
-    vv.addEventListener("scroll", syncViewport);
-    syncViewport();
+    vv.addEventListener("resize", scheduleSync);
+    vv.addEventListener("scroll", scheduleSync);
+    applyOffset();
   }
 
   // Service Worker はサーバー経由（http/https）で開いた場合のみ登録する
